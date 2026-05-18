@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,12 @@ public class PointGrantService {
     public PointAccount getAccount(String userId) {
         return pointAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PointGrant> getGrantHistory(String userId) {
+        PointAccount account = getAccount(userId);
+        return pointGrantRepository.findByPointAccountIdOrderByCreatedAtDesc(account.getId());
     }
 
     @Transactional
