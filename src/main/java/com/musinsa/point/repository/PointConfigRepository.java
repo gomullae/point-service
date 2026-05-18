@@ -1,0 +1,11 @@
+package com.musinsa.point.repository;
+
+import com.musinsa.point.domain.PointConfig;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface PointConfigRepository extends JpaRepository<PointConfig, Long> {
+
+    Optional<PointConfig> findByConfigKey(String configKey);
+}
