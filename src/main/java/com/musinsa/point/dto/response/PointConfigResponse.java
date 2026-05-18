@@ -1,6 +1,6 @@
-package com.musinsa.point.dto;
+package com.musinsa.point.dto.response;
 
-import com.musinsa.point.domain.PointConfig;
+import com.musinsa.point.domain.entity.PointConfig;
 
 public record PointConfigResponse(
         String configKey,

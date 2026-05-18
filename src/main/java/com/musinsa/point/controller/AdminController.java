@@ -1,8 +1,9 @@
 package com.musinsa.point.controller;
 
-import com.musinsa.point.domain.ConfigKey;
-import com.musinsa.point.domain.GrantType;
-import com.musinsa.point.dto.*;
+import com.musinsa.point.domain.enums.ConfigKey;
+import com.musinsa.point.domain.enums.GrantType;
+import com.musinsa.point.dto.request.*;
+import com.musinsa.point.dto.response.*;
 import com.musinsa.point.service.PointConfigService;
 import com.musinsa.point.service.PointGrantService;
 import jakarta.validation.Valid;

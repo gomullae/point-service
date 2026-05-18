@@ -1,9 +1,9 @@
 package com.musinsa.point.service;
 
 import com.musinsa.point.common.PointPolicyProvider;
-import com.musinsa.point.domain.ConfigKey;
-import com.musinsa.point.domain.PointConfig;
-import com.musinsa.point.domain.PointConfigHistory;
+import com.musinsa.point.domain.entity.PointConfig;
+import com.musinsa.point.domain.entity.PointConfigHistory;
+import com.musinsa.point.domain.enums.ConfigKey;
 import com.musinsa.point.exception.PointErrorCode;
 import com.musinsa.point.exception.PointException;
 import com.musinsa.point.repository.PointConfigHistoryRepository;

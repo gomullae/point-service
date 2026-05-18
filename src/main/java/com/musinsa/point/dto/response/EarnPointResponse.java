@@ -1,6 +1,6 @@
-package com.musinsa.point.dto;
+package com.musinsa.point.dto.response;
 
-import com.musinsa.point.domain.PointGrant;
+import com.musinsa.point.domain.entity.PointGrant;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

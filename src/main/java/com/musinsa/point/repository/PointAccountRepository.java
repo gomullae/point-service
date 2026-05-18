@@ -1,6 +1,6 @@
 package com.musinsa.point.repository;
 
-import com.musinsa.point.domain.PointAccount;
+import com.musinsa.point.domain.entity.PointAccount;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

@@ -1,4 +1,4 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.enums;
 
 public enum GrantStatus {
     ACTIVE,     // 사용 가능

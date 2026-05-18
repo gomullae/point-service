@@ -1,4 +1,4 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.enums;
 
 public enum RestoreType {
     RESTORE_TO_ORIGINAL, // 기존 적립 건 remaining_amount 복원

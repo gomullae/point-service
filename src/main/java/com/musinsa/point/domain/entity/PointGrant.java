@@ -1,5 +1,7 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.entity;
 
+import com.musinsa.point.domain.enums.GrantStatus;
+import com.musinsa.point.domain.enums.GrantType;
 import jakarta.persistence.*;
 import lombok.*;
 

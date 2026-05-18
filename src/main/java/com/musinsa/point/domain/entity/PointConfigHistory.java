@@ -1,4 +1,4 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

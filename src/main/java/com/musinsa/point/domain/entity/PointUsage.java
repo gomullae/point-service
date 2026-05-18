@@ -1,5 +1,6 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.entity;
 
+import com.musinsa.point.domain.enums.UsageStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

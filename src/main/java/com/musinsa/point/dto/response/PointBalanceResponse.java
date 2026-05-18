@@ -1,6 +1,6 @@
-package com.musinsa.point.dto;
+package com.musinsa.point.dto.response;
 
-import com.musinsa.point.domain.PointAccount;
+import com.musinsa.point.domain.entity.PointAccount;
 
 public record PointBalanceResponse(String userId, Long balance) {
 

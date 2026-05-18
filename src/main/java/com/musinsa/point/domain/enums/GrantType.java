@@ -1,4 +1,4 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.enums;
 
 public enum GrantType {
     AUTO,           // 일반 적립

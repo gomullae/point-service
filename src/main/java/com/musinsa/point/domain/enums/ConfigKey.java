@@ -1,4 +1,4 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.enums;
 
 public enum ConfigKey {
     MAX_EARN_AMOUNT_ONCE,

@@ -1,4 +1,4 @@
-package com.musinsa.point.domain;
+package com.musinsa.point.domain.enums;
 
 public enum UsageStatus {
     ACTIVE,            // 사용 완료 (취소 없음)
