@@ -15,11 +15,6 @@ public interface PointGrantRepository extends JpaRepository<PointGrant, Long> {
 
     boolean existsByPointKey(String pointKey);
 
-    /**
-     * 사용 가능한 적립금 조회: ACTIVE 상태이고 만료되지 않은 건만
-     * 만료 기준: expiry_date >= today (expiry_date < today 이면 만료)
-     * 정렬: 수기 지급 우선, 이후 만료일 오름차순, 동일 만료일은 생성순(id ASC)
-     */
     @Query("""
             SELECT g FROM PointGrant g
             WHERE g.pointAccount.id = :accountId

@@ -29,7 +29,6 @@ public class PointUsageCancelDetail extends BaseEntity {
     @Column(nullable = false)
     private RestoreType restoreType;
 
-    // CREATE_NEW_GRANT 일 때만 세팅 (새로 생성된 point_grant 참조)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restored_point_grant_id")
     private PointGrant restoredPointGrant;

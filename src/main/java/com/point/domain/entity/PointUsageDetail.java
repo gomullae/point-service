@@ -21,7 +21,6 @@ public class PointUsageDetail extends BaseEntity {
     @JoinColumn(name = "point_grant_id", nullable = false)
     private PointGrant pointGrant;
 
-    // 동일 사용 건 내 적립 차감 순서 (1부터 시작). 취소 복원 순서의 기준.
     @Column(nullable = false)
     private Integer useSequence;
 

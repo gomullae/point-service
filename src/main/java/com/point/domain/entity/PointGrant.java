@@ -24,7 +24,6 @@ public class PointGrant extends BaseEntity {
     @JoinColumn(name = "point_account_id", nullable = false)
     private PointAccount pointAccount;
 
-    // user_id 비정규화: JOIN 없이 조회하기 위해 보관. 생성 후 변경 없음.
     @Column(nullable = false)
     private String userId;
 
@@ -38,7 +37,6 @@ public class PointGrant extends BaseEntity {
     @Column(nullable = false)
     private GrantType grantType;
 
-    // ACTIVE / CANCELLED 두 값만 사용. 만료 판단은 expiry_date 기준.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private GrantStatus status;
@@ -46,7 +44,6 @@ public class PointGrant extends BaseEntity {
     @Column(nullable = false)
     private LocalDate expiryDate;
 
-    // CANCEL_RESTORE 타입일 때만 세팅 (이 적립을 유발한 사용취소 참조)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_usage_cancel_id")
     private PointUsageCancel sourceUsageCancel;
@@ -83,7 +80,7 @@ public class PointGrant extends BaseEntity {
         return this.expiryDate.isBefore(today);
     }
 
-    public boolean isFullyUsed() {
+    public boolean hasBeenUsed() {
         return this.remainingAmount < this.originalAmount;
     }
 }

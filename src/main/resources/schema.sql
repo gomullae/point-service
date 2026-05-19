@@ -1,6 +1,3 @@
--- =============================================
--- 설정
--- =============================================
 CREATE TABLE IF NOT EXISTS point_config (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     config_key  VARCHAR(100) NOT NULL UNIQUE,
@@ -12,7 +9,7 @@ CREATE TABLE IF NOT EXISTS point_config (
 );
 
 CREATE TABLE IF NOT EXISTS point_config_history (
-    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id               BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
     point_config_id  BIGINT       NOT NULL,
     config_key       VARCHAR(100) NOT NULL,
     old_value        VARCHAR(255),
@@ -23,9 +20,6 @@ CREATE TABLE IF NOT EXISTS point_config_history (
     FOREIGN KEY (point_config_id) REFERENCES point_config(id)
 );
 
--- =============================================
--- 계정
--- =============================================
 CREATE TABLE IF NOT EXISTS point_account (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id    VARCHAR(100) NOT NULL UNIQUE,
@@ -35,9 +29,6 @@ CREATE TABLE IF NOT EXISTS point_account (
     updated_at DATETIME     NOT NULL
 );
 
--- =============================================
--- 사용 (point_grant보다 먼저 생성 - point_grant가 FK 참조)
--- =============================================
 CREATE TABLE IF NOT EXISTS point_usage (
     id               BIGINT AUTO_INCREMENT PRIMARY KEY,
     point_key        VARCHAR(100) NOT NULL UNIQUE,
@@ -62,9 +53,6 @@ CREATE TABLE IF NOT EXISTS point_usage_cancel (
     FOREIGN KEY (point_usage_id) REFERENCES point_usage(id)
 );
 
--- =============================================
--- 적립 (point_usage_cancel을 nullable FK로 참조)
--- =============================================
 CREATE TABLE IF NOT EXISTS point_grant (
     id                     BIGINT AUTO_INCREMENT PRIMARY KEY,
     point_key              VARCHAR(100) NOT NULL UNIQUE,
@@ -82,11 +70,8 @@ CREATE TABLE IF NOT EXISTS point_grant (
     FOREIGN KEY (source_usage_cancel_id) REFERENCES point_usage_cancel(id)
 );
 
--- =============================================
--- 사용 상세 (point_usage + point_grant 연결)
--- =============================================
 CREATE TABLE IF NOT EXISTS point_usage_detail (
-    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id               BIGINT   NOT NULL AUTO_INCREMENT PRIMARY KEY,
     point_usage_id   BIGINT   NOT NULL,
     point_grant_id   BIGINT   NOT NULL,
     use_sequence     INT      NOT NULL,
@@ -97,11 +82,8 @@ CREATE TABLE IF NOT EXISTS point_usage_detail (
     FOREIGN KEY (point_grant_id) REFERENCES point_grant(id)
 );
 
--- =============================================
--- 취소 상세 (point_usage_cancel + point_usage_detail 연결)
--- =============================================
 CREATE TABLE IF NOT EXISTS point_usage_cancel_detail (
-    id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id                      BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
     point_usage_cancel_id   BIGINT      NOT NULL,
     point_usage_detail_id   BIGINT      NOT NULL,
     cancel_amount           BIGINT      NOT NULL,
@@ -114,9 +96,6 @@ CREATE TABLE IF NOT EXISTS point_usage_cancel_detail (
     FOREIGN KEY (restored_point_grant_id) REFERENCES point_grant(id)
 );
 
--- =============================================
--- 인덱스 (Section 5.5 기준)
--- =============================================
 CREATE INDEX IF NOT EXISTS idx_grant_account_status_expiry ON point_grant(point_account_id, status, expiry_date);
 CREATE INDEX IF NOT EXISTS idx_usage_detail_usage_id       ON point_usage_detail(point_usage_id);
 CREATE INDEX IF NOT EXISTS idx_usage_detail_grant_id       ON point_usage_detail(point_grant_id);

@@ -10,6 +10,8 @@ import com.point.exception.PointException;
 import com.point.repository.PointAccountRepository;
 import com.point.repository.PointGrantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,7 @@ public class PointGrantService {
         return pointGrantRepository.findByPointAccountIdOrderByCreatedAtDesc(account.getId());
     }
 
+    @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
     @Transactional
     public PointGrant grant(String userId, String pointKey, long amount, Long requestedExpiryDays, GrantType grantType) {
         var existingGrant = pointGrantRepository.findByPointKey(pointKey);
@@ -57,12 +60,12 @@ public class PointGrantService {
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
         }
 
-        long maxEarnOnce = policyProvider.getLongValue(ConfigKey.MAX_EARN_AMOUNT_ONCE);
-        if (amount > maxEarnOnce) {
-            throw new PointException(PointErrorCode.EXCEED_MAX_EARN_AMOUNT_ONCE);
+        long maxGrantOnce = policyProvider.getLongValue(ConfigKey.MAX_GRANT_AMOUNT_ONCE);
+        if (amount > maxGrantOnce) {
+            throw new PointException(PointErrorCode.EXCEED_MAX_GRANT_AMOUNT_ONCE);
         }
 
-        PointAccount account = getOrCreateLockedAccount(userId);
+        PointAccount account = getOrCreateAccount(userId);
 
         long maxHold = policyProvider.getLongValue(ConfigKey.MAX_HOLD_AMOUNT);
         long currentUsableBalance = pointGrantRepository.sumUsableBalance(account.getId(), timeProvider.today());
@@ -92,6 +95,7 @@ public class PointGrantService {
         return grant;
     }
 
+    @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
     @Transactional
     public PointGrant cancel(String pointKey) {
         PointGrant grant = pointGrantRepository.findByPointKey(pointKey)
@@ -100,19 +104,19 @@ public class PointGrantService {
         if (grant.getStatus() == GrantStatus.CANCELLED) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_CANCELLED);
         }
-        if (grant.isFullyUsed()) {
+        if (grant.hasBeenUsed()) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_USED);
         }
 
-        PointAccount account = pointAccountRepository.findByUserIdForUpdate(grant.getUserId())
+        PointAccount account = pointAccountRepository.findByUserId(grant.getUserId())
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
         account.decreaseBalance(grant.getRemainingAmount());
         grant.cancel();
         return grant;
     }
 
-    private PointAccount getOrCreateLockedAccount(String userId) {
-        return pointAccountRepository.findByUserIdForUpdate(userId)
+    private PointAccount getOrCreateAccount(String userId) {
+        return pointAccountRepository.findByUserId(userId)
                 .orElseGet(() -> pointAccountRepository.save(
                         PointAccount.builder().userId(userId).build()));
     }
