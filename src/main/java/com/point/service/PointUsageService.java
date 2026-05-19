@@ -9,13 +9,14 @@ import com.point.exception.PointErrorCode;
 import com.point.exception.PointException;
 import com.point.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +33,7 @@ public class PointUsageService {
     private final PointKeyGenerator pointKeyGenerator;
     private final TimeProvider timeProvider;
 
+    @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
     @Transactional
     public PointUsage use(String userId, String orderId, String pointKey, long amount) {
         var existingUsage = pointUsageRepository.findByPointKey(pointKey);
@@ -45,7 +47,7 @@ public class PointUsageService {
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
         }
 
-        PointAccount account = pointAccountRepository.findByUserIdForUpdate(userId)
+        PointAccount account = pointAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
 
         LocalDate today = timeProvider.today();
@@ -92,6 +94,7 @@ public class PointUsageService {
         return usage;
     }
 
+    @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
     @Transactional
     public PointUsageCancel cancel(String usagePointKey, long cancelAmount) {
         PointUsage usage = pointUsageRepository.findByPointKey(usagePointKey)
@@ -104,7 +107,7 @@ public class PointUsageService {
             throw new PointException(PointErrorCode.CANCEL_AMOUNT_EXCEEDS_REMAINING);
         }
 
-        PointAccount account = pointAccountRepository.findByUserIdForUpdate(usage.getUserId())
+        PointAccount account = pointAccountRepository.findByUserId(usage.getUserId())
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
 
         PointUsageCancel usageCancel = PointUsageCancel.builder()
