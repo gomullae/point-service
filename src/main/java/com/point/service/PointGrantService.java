@@ -49,12 +49,19 @@ public class PointGrantService {
     @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
     @Transactional
     public PointGrant grant(String userId, String pointKey, long amount, Long requestedExpiryDays, GrantType grantType) {
+        long expiryDays = requestedExpiryDays != null
+                ? requestedExpiryDays
+                : policyProvider.getLongValue(ConfigKey.DEFAULT_EXPIRY_DAYS);
+        validateExpiryDays(expiryDays);
+        LocalDate expiryDate = timeProvider.today().plusDays(expiryDays);
+
         var existingGrant = pointGrantRepository.findByPointKey(pointKey);
         if (existingGrant.isPresent()) {
             PointGrant existing = existingGrant.get();
             if (existing.getUserId().equals(userId)
                     && existing.getOriginalAmount() == amount
-                    && existing.getGrantType() == grantType) {
+                    && existing.getGrantType() == grantType
+                    && existing.getExpiryDate().equals(expiryDate)) {
                 return existing;
             }
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
@@ -72,12 +79,6 @@ public class PointGrantService {
         if (currentUsableBalance + amount > maxHold) {
             throw new PointException(PointErrorCode.EXCEED_MAX_HOLD_AMOUNT);
         }
-
-        long expiryDays = requestedExpiryDays != null
-                ? requestedExpiryDays
-                : policyProvider.getLongValue(ConfigKey.DEFAULT_EXPIRY_DAYS);
-        validateExpiryDays(expiryDays);
-        LocalDate expiryDate = timeProvider.today().plusDays(expiryDays);
 
         PointGrant grant = PointGrant.builder()
                 .pointKey(pointKey)
