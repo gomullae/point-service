@@ -9,6 +9,7 @@ import com.point.exception.PointErrorCode;
 import com.point.exception.PointException;
 import com.point.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PointUsageService {
 
+    private static final int GRANT_FETCH_SIZE = 100;
+
     private final PointAccountRepository pointAccountRepository;
     private final PointGrantRepository pointGrantRepository;
     private final PointUsageRepository pointUsageRepository;
@@ -32,6 +35,7 @@ public class PointUsageService {
     private final PointUsageCancelDetailRepository pointUsageCancelDetailRepository;
     private final PointPolicyProvider policyProvider;
     private final PointKeyGenerator pointKeyGenerator;
+    private final PointExpirationService pointExpirationService;
     private final TimeProvider timeProvider;
 
     @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
@@ -50,11 +54,8 @@ public class PointUsageService {
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
 
         LocalDate today = timeProvider.today();
-        List<PointGrant> usableGrants = pointGrantRepository.findUsableGrants(account.getId(), today);
-        long usableBalance = usableGrants.stream()
-                .mapToLong(PointGrant::getRemainingAmount)
-                .sum();
-        if (usableBalance < amount) {
+        pointExpirationService.expire(account, today);
+        if (account.getBalance() < amount) {
             throw new PointException(PointErrorCode.INSUFFICIENT_BALANCE);
         }
 
@@ -69,23 +70,31 @@ public class PointUsageService {
 
         long remaining = amount;
         int sequence = 1;
-        for (PointGrant grant : usableGrants) {
-            if (remaining <= 0) break;
-            long deduct = Math.min(remaining, grant.getRemainingAmount());
-            grant.useAmount(deduct);
+        while (remaining > 0) {
+            List<PointGrant> usableGrants = pointGrantRepository.findUsableGrants(
+                    account.getId(),
+                    today,
+                    PageRequest.of(0, GRANT_FETCH_SIZE)
+            );
+            if (usableGrants.isEmpty()) {
+                throw new PointException(PointErrorCode.INSUFFICIENT_BALANCE);
+            }
 
-            pointUsageDetailRepository.save(PointUsageDetail.builder()
-                    .pointUsage(usage)
-                    .pointGrant(grant)
-                    .useSequence(sequence++)
-                    .usedAmount(deduct)
-                    .build());
+            for (PointGrant grant : usableGrants) {
+                if (remaining <= 0) break;
 
-            remaining -= deduct;
-        }
+                long deduct = Math.min(remaining, grant.getRemainingAmount());
+                grant.useAmount(deduct);
 
-        if (remaining != 0) {
-            throw new PointException(PointErrorCode.INSUFFICIENT_BALANCE);
+                pointUsageDetailRepository.save(PointUsageDetail.builder()
+                        .pointUsage(usage)
+                        .pointGrant(grant)
+                        .useSequence(sequence++)
+                        .usedAmount(deduct)
+                        .build());
+
+                remaining -= deduct;
+            }
         }
 
         account.decreaseBalance(amount);

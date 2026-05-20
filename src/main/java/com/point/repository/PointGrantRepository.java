@@ -1,6 +1,7 @@
 package com.point.repository;
 
 import com.point.domain.entity.PointGrant;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,18 +28,18 @@ public interface PointGrantRepository extends JpaRepository<PointGrant, Long> {
               g.id ASC
             """)
     List<PointGrant> findUsableGrants(@Param("accountId") Long accountId,
-                                      @Param("today") LocalDate today);
+                                      @Param("today") LocalDate today,
+                                      Pageable pageable);
 
     List<PointGrant> findByPointAccountIdOrderByCreatedAtDesc(Long accountId);
 
     @Query("""
-            SELECT COALESCE(SUM(g.remainingAmount), 0)
-            FROM PointGrant g
+            SELECT g FROM PointGrant g
             WHERE g.pointAccount.id = :accountId
               AND g.status = 'ACTIVE'
               AND g.remainingAmount > 0
-              AND g.expiryDate >= :today
+              AND g.expiryDate < :today
             """)
-    Long sumUsableBalance(@Param("accountId") Long accountId,
-                          @Param("today") LocalDate today);
+    List<PointGrant> findExpiredGrants(@Param("accountId") Long accountId,
+                                       @Param("today") LocalDate today);
 }

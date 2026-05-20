@@ -71,6 +71,12 @@ public class PointGrant extends BaseEntity {
         this.remainingAmount += amount;
     }
 
+    public long expireRemainingAmount() {
+        long expiredAmount = this.remainingAmount;
+        this.remainingAmount = 0L;
+        return expiredAmount;
+    }
+
     public void cancel() {
         this.status = GrantStatus.CANCELLED;
         this.remainingAmount = 0L;

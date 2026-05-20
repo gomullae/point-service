@@ -24,6 +24,7 @@ public class PointGrantService {
     private final PointAccountRepository pointAccountRepository;
     private final PointGrantRepository pointGrantRepository;
     private final PointPolicyProvider policyProvider;
+    private final PointExpirationService pointExpirationService;
     private final TimeProvider timeProvider;
 
     @Transactional(readOnly = true)
@@ -32,10 +33,11 @@ public class PointGrantService {
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public long getUsableBalance(String userId) {
         PointAccount account = getAccount(userId);
-        return pointGrantRepository.sumUsableBalance(account.getId(), timeProvider.today());
+        pointExpirationService.expire(account, timeProvider.today());
+        return account.getBalance();
     }
 
     @Transactional(readOnly = true)
@@ -68,10 +70,10 @@ public class PointGrantService {
         }
 
         PointAccount account = getOrCreateAccount(userId);
+        pointExpirationService.expire(account, timeProvider.today());
 
         long maxHold = policyProvider.getLongValue(ConfigKey.MAX_HOLD_AMOUNT);
-        long currentUsableBalance = pointGrantRepository.sumUsableBalance(account.getId(), timeProvider.today());
-        if (currentUsableBalance + amount > maxHold) {
+        if (account.getBalance() + amount > maxHold) {
             throw new PointException(PointErrorCode.EXCEED_MAX_HOLD_AMOUNT);
         }
 
