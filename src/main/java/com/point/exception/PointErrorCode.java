@@ -16,6 +16,7 @@ public enum PointErrorCode {
     DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST(HttpStatus.CONFLICT, "동일한 포인트 키가 다른 요청에 이미 사용되었습니다."),
     GRANT_NOT_FOUND(HttpStatus.NOT_FOUND, "포인트 적립 내역을 찾을 수 없습니다."),
     GRANT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 취소된 적립 건입니다."),
+    GRANT_ALREADY_EXPIRED(HttpStatus.CONFLICT, "이미 만료된 적립 건입니다."),
     GRANT_ALREADY_USED(HttpStatus.UNPROCESSABLE_ENTITY, "이미 일부 사용된 적립 건은 취소할 수 없습니다."),
     INVALID_EXPIRY_DAYS(HttpStatus.UNPROCESSABLE_ENTITY, "만료일은 1일 이상 5년 미만이어야 합니다."),
 

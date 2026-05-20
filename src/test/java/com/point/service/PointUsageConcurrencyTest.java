@@ -78,12 +78,15 @@ class PointUsageConcurrencyTest {
     @Test
     @DisplayName("동시에 사용 요청이 들어와도 잔액을 초과해서 차감하지 않는다")
     void concurrentUse_doesNotOverspendBalance() throws Exception {
+        // given
         pointGrantService.grant(USER, "grant-concurrent-1", 1_000L, null, GrantType.AUTO);
 
+        // when
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         var executor = Executors.newFixedThreadPool(2);
 
+        // then
         Callable<Result> use800 = () -> useAfterStart(ready, start, "order-800", "use-800", 800L);
         Callable<Result> use700 = () -> useAfterStart(ready, start, "order-700", "use-700", 700L);
 
@@ -108,6 +111,34 @@ class PointUsageConcurrencyTest {
         assertThat(pointGrantService.getUsableBalance(USER)).isEqualTo(1_000L - totalUsed);
     }
 
+    @Test
+    @DisplayName("신규 사용자에게 동시에 적립해도 계정은 하나만 생성되고 잔액이 합산된다")
+    void concurrentGrant_createsSingleAccount() throws Exception {
+        // given
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+
+        // when
+        Callable<Result> grant500 = () -> grantAfterStart(ready, start, "grant-concurrent-new-500", 500L);
+        Callable<Result> grant700 = () -> grantAfterStart(ready, start, "grant-concurrent-new-700", 700L);
+
+        // then
+        var future1 = executor.submit(grant500);
+        var future2 = executor.submit(grant700);
+        ready.await();
+        start.countDown();
+
+        List<Result> results = List.of(future1.get(), future2.get());
+        executor.shutdown();
+
+        assertThat(results).allMatch(Result::success);
+        assertThat(pointAccountRepository.findAll())
+                .filteredOn(account -> account.getUserId().equals(USER))
+                .hasSize(1);
+        assertThat(pointGrantService.getUsableBalance(USER)).isEqualTo(1_200L);
+}
+
     private Result useAfterStart(CountDownLatch ready, CountDownLatch start,
                                  String orderId, String pointKey, long amount) throws InterruptedException {
         ready.countDown();
@@ -120,6 +151,18 @@ class PointUsageConcurrencyTest {
         }
     }
 
-    private record Result(boolean success, PointException exception) {
+    private Result grantAfterStart(CountDownLatch ready, CountDownLatch start,
+                                   String pointKey, long amount) throws InterruptedException {
+        ready.countDown();
+        start.await();
+        try {
+            pointGrantService.grant(USER, pointKey, amount, null, GrantType.AUTO);
+            return new Result(true, null);
+        } catch (Exception e) {
+            return new Result(false, e);
+        }
+    }
+
+    private record Result(boolean success, Exception exception) {
     }
 }

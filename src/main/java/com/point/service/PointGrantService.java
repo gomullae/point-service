@@ -9,6 +9,7 @@ import com.point.exception.PointException;
 import com.point.repository.PointAccountRepository;
 import com.point.repository.PointGrantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
@@ -40,13 +41,17 @@ public class PointGrantService {
         return account.getBalance();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PointGrant> getGrantHistory(String userId) {
         PointAccount account = getAccount(userId);
+        pointExpirationService.expire(account, timeProvider.today());
         return pointGrantRepository.findByPointAccountIdOrderByCreatedAtDesc(account.getId());
     }
 
-    @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
+    @Retryable(retryFor = {
+            ObjectOptimisticLockingFailureException.class,
+            DataIntegrityViolationException.class
+    })
     @Transactional
     public PointGrant grant(String userId, String pointKey, long amount, Long requestedExpiryDays, GrantType grantType) {
         long expiryDays = requestedExpiryDays != null
@@ -99,15 +104,20 @@ public class PointGrantService {
         PointGrant grant = pointGrantRepository.findByPointKey(pointKey)
                 .orElseThrow(() -> new PointException(PointErrorCode.GRANT_NOT_FOUND));
 
+        PointAccount account = pointAccountRepository.findByUserId(grant.getUserId())
+                .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
+        pointExpirationService.expire(account, timeProvider.today());
+
         if (grant.getStatus() == GrantStatus.CANCELLED) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_CANCELLED);
+        }
+        if (grant.getStatus() == GrantStatus.EXPIRED) {
+            throw new PointException(PointErrorCode.GRANT_ALREADY_EXPIRED);
         }
         if (grant.hasBeenUsed()) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_USED);
         }
 
-        PointAccount account = pointAccountRepository.findByUserId(grant.getUserId())
-                .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
         account.decreaseBalance(grant.getRemainingAmount());
         grant.cancel();
         return grant;

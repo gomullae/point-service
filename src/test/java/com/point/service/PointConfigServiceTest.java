@@ -40,8 +40,10 @@ class PointConfigServiceTest {
     @Test
     @DisplayName("전체 설정을 조회한다")
     void getAllConfigs_success() {
+        // when
         List<PointConfig> configs = pointConfigService.getAllConfigs();
 
+        // then
         assertThat(configs).isNotEmpty();
         assertThat(configs).extracting(PointConfig::getConfigKey)
                 .contains(
@@ -54,10 +56,11 @@ class PointConfigServiceTest {
     @Test
     @DisplayName("설정 변경 시 값이 업데이트되고 이력이 저장된다")
     void updateConfig_success() {
+        // when
         PointConfig config = pointConfigService.updateConfig(ConfigKey.MAX_GRANT_AMOUNT_ONCE, "200000", "admin");
 
+        // then
         assertThat(config.getConfigValue()).isEqualTo("200000");
-
         var histories = pointConfigHistoryRepository.findByPointConfigIdOrderByCreatedAtDesc(config.getId());
         assertThat(histories).hasSize(1);
         assertThat(histories.get(0).getNewValue()).isEqualTo("200000");
@@ -69,6 +72,7 @@ class PointConfigServiceTest {
     @Test
     @DisplayName("숫자가 아닌 값으로 설정 변경 시 예외를 던진다")
     void updateConfig_invalidValue_notNumber() {
+        // when & then
         assertThatThrownBy(() -> pointConfigService.updateConfig(ConfigKey.MAX_GRANT_AMOUNT_ONCE, "abc", "admin"))
                 .isInstanceOf(PointException.class)
                 .extracting(e -> ((PointException) e).getErrorCode())
@@ -78,6 +82,7 @@ class PointConfigServiceTest {
     @Test
     @DisplayName("0 이하 값으로 설정 변경 시 예외를 던진다")
     void updateConfig_invalidValue_zero() {
+        // when & then
         assertThatThrownBy(() -> pointConfigService.updateConfig(ConfigKey.MAX_GRANT_AMOUNT_ONCE, "0", "admin"))
                 .isInstanceOf(PointException.class)
                 .extracting(e -> ((PointException) e).getErrorCode())
@@ -87,6 +92,7 @@ class PointConfigServiceTest {
     @Test
     @DisplayName("DEFAULT_EXPIRY_DAYS를 1825 이상으로 설정하면 예외를 던진다")
     void updateConfig_expiryDays_tooLarge() {
+        // when & then
         assertThatThrownBy(() -> pointConfigService.updateConfig(ConfigKey.DEFAULT_EXPIRY_DAYS, "1825", "admin"))
                 .isInstanceOf(PointException.class)
                 .extracting(e -> ((PointException) e).getErrorCode())

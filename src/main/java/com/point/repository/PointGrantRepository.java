@@ -14,8 +14,6 @@ public interface PointGrantRepository extends JpaRepository<PointGrant, Long> {
 
     Optional<PointGrant> findByPointKey(String pointKey);
 
-    boolean existsByPointKey(String pointKey);
-
     @Query("""
             SELECT g FROM PointGrant g
             WHERE g.pointAccount.id = :accountId

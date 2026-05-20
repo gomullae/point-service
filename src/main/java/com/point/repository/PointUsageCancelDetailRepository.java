@@ -11,9 +11,6 @@ public interface PointUsageCancelDetailRepository extends JpaRepository<PointUsa
 
     List<PointUsageCancelDetail> findByPointUsageCancelId(Long pointUsageCancelId);
 
-    @Query("SELECT COALESCE(SUM(d.cancelAmount), 0) FROM PointUsageCancelDetail d WHERE d.pointUsageDetail.id = :usageDetailId")
-    Long sumCancelAmountByUsageDetailId(@Param("usageDetailId") Long usageDetailId);
-
     @Query("""
             SELECT d.pointUsageDetail.id AS usageDetailId, COALESCE(SUM(d.cancelAmount), 0) AS cancelledAmount
             FROM PointUsageCancelDetail d

@@ -8,6 +8,4 @@ import java.util.Optional;
 public interface PointUsageRepository extends JpaRepository<PointUsage, Long> {
 
     Optional<PointUsage> findByPointKey(String pointKey);
-
-    boolean existsByPointKey(String pointKey);
 }

@@ -16,5 +16,6 @@ class PointServiceApplicationTests {
 
     @Test
     void contextLoads() {
+        // when & then
     }
 }

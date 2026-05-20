@@ -55,9 +55,11 @@ class AdminControllerTest {
     @Test
     @DisplayName("수기 지급 성공 시 201을 반환하고 grantType이 MANUAL이다")
     void manualGrant_returns201() throws Exception {
+        // when
         given(pointGrantService.grant(anyString(), anyString(), anyLong(), any(), any()))
                 .willReturn(STUB_MANUAL_GRANT);
 
+        // then
         mockMvc.perform(post("/api/v1/admin/points/grants")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -70,8 +72,10 @@ class AdminControllerTest {
     @Test
     @DisplayName("설정 전체 조회 성공 시 200을 반환한다")
     void getAllConfigs_returns200() throws Exception {
+        // when
         given(pointConfigService.getAllConfigs()).willReturn(List.of(STUB_CONFIG));
 
+        // then
         mockMvc.perform(get("/api/v1/admin/configs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].configKey").value("MAX_GRANT_AMOUNT_ONCE"))
@@ -81,9 +85,11 @@ class AdminControllerTest {
     @Test
     @DisplayName("설정 변경 성공 시 200을 반환한다")
     void updateConfig_returns200() throws Exception {
+        // when
         given(pointConfigService.updateConfig(any(), anyString(), anyString()))
                 .willReturn(STUB_CONFIG);
 
+        // then
         mockMvc.perform(put("/api/v1/admin/configs/MAX_GRANT_AMOUNT_ONCE")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -96,6 +102,7 @@ class AdminControllerTest {
     @Test
     @DisplayName("존재하지 않는 configKey로 설정 변경 시 404를 반환한다")
     void updateConfig_invalidKey_returns404() throws Exception {
+        // when & then
         mockMvc.perform(put("/api/v1/admin/configs/UNKNOWN_KEY")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
