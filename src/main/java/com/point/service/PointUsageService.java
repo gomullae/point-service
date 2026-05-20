@@ -1,8 +1,8 @@
 package com.point.service;
 
-import com.point.common.PointKeyGenerator;
-import com.point.common.PointPolicyProvider;
-import com.point.common.TimeProvider;
+import com.point.support.PointKeyGenerator;
+import com.point.policy.PointPolicyProvider;
+import com.point.support.TimeProvider;
 import com.point.domain.entity.*;
 import com.point.domain.enums.*;
 import com.point.exception.PointErrorCode;

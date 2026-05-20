@@ -1,4 +1,4 @@
-package com.point.common;
+package com.point.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;

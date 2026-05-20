@@ -1,4 +1,4 @@
-package com.point.common;
+package com.point.support;
 
 import org.springframework.stereotype.Component;
 

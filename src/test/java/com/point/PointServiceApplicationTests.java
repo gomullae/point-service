@@ -1,7 +1,7 @@
 package com.point;
 
-import com.point.common.PointPolicyProvider;
-import com.point.common.TimeProvider;
+import com.point.policy.PointPolicyProvider;
+import com.point.support.TimeProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;

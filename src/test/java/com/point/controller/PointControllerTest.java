@@ -1,7 +1,7 @@
 package com.point.controller;
 
-import com.point.common.PointPolicyProvider;
-import com.point.common.TimeProvider;
+import com.point.policy.PointPolicyProvider;
+import com.point.support.TimeProvider;
 import com.point.domain.enums.ConfigKey;
 import com.point.repository.*;
 import org.junit.jupiter.api.BeforeEach;

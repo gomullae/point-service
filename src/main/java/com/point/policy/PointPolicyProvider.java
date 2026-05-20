@@ -1,5 +1,6 @@
-package com.point.common;
+package com.point.policy;
 
+import com.point.config.CacheConfig;
 import com.point.domain.entity.PointConfig;
 import com.point.domain.enums.ConfigKey;
 import com.point.exception.PointErrorCode;

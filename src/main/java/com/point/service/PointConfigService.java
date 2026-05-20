@@ -1,6 +1,6 @@
 package com.point.service;
 
-import com.point.common.PointPolicyProvider;
+import com.point.policy.PointPolicyProvider;
 import com.point.domain.entity.PointConfig;
 import com.point.domain.entity.PointConfigHistory;
 import com.point.domain.enums.ConfigKey;

@@ -1,7 +1,7 @@
 package com.point.service;
 
-import com.point.common.PointPolicyProvider;
-import com.point.common.TimeProvider;
+import com.point.policy.PointPolicyProvider;
+import com.point.support.TimeProvider;
 import com.point.domain.entity.PointGrant;
 import com.point.domain.entity.PointUsage;
 import com.point.domain.entity.PointUsageCancel;
