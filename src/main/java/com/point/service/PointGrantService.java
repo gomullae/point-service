@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -54,34 +55,59 @@ public class PointGrantService {
     })
     @Transactional
     public PointGrant grant(String userId, String pointKey, long amount, Long requestedExpiryDays, GrantType grantType) {
+        LocalDate expiryDate = resolveExpiryDate(requestedExpiryDays);
+
+        Optional<PointGrant> idempotent = findExistingGrant(pointKey, userId, amount, grantType, expiryDate);
+        if (idempotent.isPresent()) return idempotent.get();
+
+        validateGrantAmount(amount);
+
+        PointAccount account = getOrCreateAccountAndExpire(userId);
+        validateHoldLimit(account, amount);
+
+        return saveGrant(account, userId, pointKey, amount, grantType, expiryDate);
+    }
+
+    private LocalDate resolveExpiryDate(Long requestedExpiryDays) {
         long expiryDays = requestedExpiryDays != null
                 ? requestedExpiryDays
                 : policyProvider.getLongValue(ConfigKey.DEFAULT_EXPIRY_DAYS);
         validateExpiryDays(expiryDays);
-        LocalDate expiryDate = timeProvider.today().plusDays(expiryDays);
+        return timeProvider.today().plusDays(expiryDays);
+    }
 
-        var existingGrant = pointGrantRepository.findByPointKey(pointKey);
-        if (existingGrant.isPresent()) {
-            PointGrant existing = existingGrant.get();
+    private Optional<PointGrant> findExistingGrant(String pointKey, String userId, long amount,
+                                                    GrantType grantType, LocalDate expiryDate) {
+        return pointGrantRepository.findByPointKey(pointKey).map(existing -> {
             if (isSameGrantRequest(existing, userId, amount, grantType, expiryDate)) {
                 return existing;
             }
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
-        }
+        });
+    }
 
+    private void validateGrantAmount(long amount) {
         long maxGrantOnce = policyProvider.getLongValue(ConfigKey.MAX_GRANT_AMOUNT_ONCE);
         if (amount > maxGrantOnce) {
             throw new PointException(PointErrorCode.EXCEED_MAX_GRANT_AMOUNT_ONCE);
         }
+    }
 
+    private PointAccount getOrCreateAccountAndExpire(String userId) {
         PointAccount account = getOrCreateAccount(userId);
         pointExpirationService.expire(account, timeProvider.today());
+        return account;
+    }
 
+    private void validateHoldLimit(PointAccount account, long amount) {
         long maxHold = policyProvider.getLongValue(ConfigKey.MAX_HOLD_AMOUNT);
         if (account.getBalance() + amount > maxHold) {
             throw new PointException(PointErrorCode.EXCEED_MAX_HOLD_AMOUNT);
         }
+    }
 
+    private PointGrant saveGrant(PointAccount account, String userId, String pointKey,
+                                 long amount, GrantType grantType, LocalDate expiryDate) {
         PointGrant grant = PointGrant.builder()
                 .pointKey(pointKey)
                 .pointAccount(account)
@@ -92,9 +118,7 @@ public class PointGrantService {
                 .sourceUsageCancel(null)
                 .build();
         pointGrantRepository.save(grant);
-
         account.increaseBalance(amount);
-
         return grant;
     }
 

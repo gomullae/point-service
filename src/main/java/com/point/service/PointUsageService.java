@@ -41,65 +41,74 @@ public class PointUsageService {
     @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
     @Transactional
     public PointUsage use(String userId, String orderId, String pointKey, long amount) {
-        var existingUsage = pointUsageRepository.findByPointKey(pointKey);
-        if (existingUsage.isPresent()) {
-            PointUsage existing = existingUsage.get();
+        Optional<PointUsage> idempotent = findExistingUsage(pointKey, userId, orderId, amount);
+        if (idempotent.isPresent()) return idempotent.get();
+
+        PointAccount account = getAccountAndExpire(userId);
+        validateBalance(account, amount);
+
+        PointUsage usage = saveUsage(account, userId, orderId, pointKey, amount);
+        deductFromGrants(account, usage, amount);
+
+        account.decreaseBalance(amount);
+        return usage;
+    }
+
+    private Optional<PointUsage> findExistingUsage(String pointKey, String userId, String orderId, long amount) {
+        return pointUsageRepository.findByPointKey(pointKey).map(existing -> {
             if (isSameUsageRequest(existing, userId, orderId, amount)) {
                 return existing;
             }
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
-        }
+        });
+    }
 
+    private PointAccount getAccountAndExpire(String userId) {
         PointAccount account = pointAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
+        pointExpirationService.expire(account, timeProvider.today());
+        return account;
+    }
 
-        LocalDate today = timeProvider.today();
-        pointExpirationService.expire(account, today);
+    private void validateBalance(PointAccount account, long amount) {
         if (account.getBalance() < amount) {
             throw new PointException(PointErrorCode.INSUFFICIENT_BALANCE);
         }
+    }
 
-        PointUsage usage = PointUsage.builder()
+    private PointUsage saveUsage(PointAccount account, String userId, String orderId, String pointKey, long amount) {
+        return pointUsageRepository.save(PointUsage.builder()
                 .pointKey(pointKey)
                 .pointAccount(account)
                 .userId(userId)
                 .orderId(orderId)
                 .usedAmount(amount)
-                .build();
-        pointUsageRepository.save(usage);
+                .build());
+    }
 
+    private void deductFromGrants(PointAccount account, PointUsage usage, long amount) {
+        LocalDate today = timeProvider.today();
         long remaining = amount;
         int sequence = 1;
         while (remaining > 0) {
             List<PointGrant> usableGrants = pointGrantRepository.findUsableGrants(
-                    account.getId(),
-                    today,
-                    PageRequest.of(0, GRANT_FETCH_SIZE)
-            );
+                    account.getId(), today, PageRequest.of(0, GRANT_FETCH_SIZE));
             if (usableGrants.isEmpty()) {
                 throw new PointException(PointErrorCode.INSUFFICIENT_BALANCE);
             }
-
             for (PointGrant grant : usableGrants) {
                 if (remaining <= 0) break;
-
                 long deduct = Math.min(remaining, grant.getRemainingAmount());
                 grant.useAmount(deduct);
-
                 pointUsageDetailRepository.save(PointUsageDetail.builder()
                         .pointUsage(usage)
                         .pointGrant(grant)
                         .useSequence(sequence++)
                         .usedAmount(deduct)
                         .build());
-
                 remaining -= deduct;
             }
         }
-
-        account.decreaseBalance(amount);
-
-        return usage;
     }
 
     @Retryable(retryFor = ObjectOptimisticLockingFailureException.class)
