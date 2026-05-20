@@ -22,10 +22,10 @@ public class AdminController {
     private final PointGrantService pointGrantService;
     private final PointConfigService pointConfigService;
 
-    @PostMapping("/points/earnings")
-    public ResponseEntity<EarnPointResponse> manualGrant(@Valid @RequestBody EarnPointRequest request) {
+    @PostMapping("/points/grants")
+    public ResponseEntity<GrantPointResponse> manualGrant(@Valid @RequestBody GrantPointRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(EarnPointResponse.from(
+                .body(GrantPointResponse.from(
                         pointGrantService.grant(request.userId(), request.pointKey(), request.amount(), request.expiryDays(), GrantType.MANUAL)));
     }
 

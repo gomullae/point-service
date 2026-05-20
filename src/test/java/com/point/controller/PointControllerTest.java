@@ -48,7 +48,7 @@ class PointControllerTest {
     @Test
     @DisplayName("적립 API는 성공 시 201과 응답 필드를 반환한다")
     void earn_success() throws Exception {
-        mockMvc.perform(post("/api/v1/points/earnings")
+        mockMvc.perform(post("/api/v1/points/grants")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -70,7 +70,7 @@ class PointControllerTest {
     @Test
     @DisplayName("필수 요청값이 없으면 400을 반환한다")
     void earn_validationError() throws Exception {
-        mockMvc.perform(post("/api/v1/points/earnings")
+        mockMvc.perform(post("/api/v1/points/grants")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -86,7 +86,7 @@ class PointControllerTest {
     @Test
     @DisplayName("잔액 부족 시 사용 API는 422를 반환한다")
     void use_insufficientBalance() throws Exception {
-        mockMvc.perform(post("/api/v1/points/earnings")
+        mockMvc.perform(post("/api/v1/points/grants")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -114,7 +114,7 @@ class PointControllerTest {
     @Test
     @DisplayName("잔액 조회 API는 사용 가능한 잔액을 반환한다")
     void getBalance_success() throws Exception {
-        mockMvc.perform(post("/api/v1/points/earnings")
+        mockMvc.perform(post("/api/v1/points/grants")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

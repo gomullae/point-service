@@ -58,7 +58,7 @@ class AdminControllerTest {
         given(pointGrantService.grant(anyString(), anyString(), anyLong(), any(), any()))
                 .willReturn(STUB_MANUAL_GRANT);
 
-        mockMvc.perform(post("/api/v1/admin/points/earnings")
+        mockMvc.perform(post("/api/v1/admin/points/grants")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"userId":"admin-user","pointKey":"manual-1","amount":5000}

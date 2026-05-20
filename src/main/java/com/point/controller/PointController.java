@@ -21,14 +21,14 @@ public class PointController {
     private final PointGrantService pointGrantService;
     private final PointUsageService pointUsageService;
 
-    @PostMapping("/earnings")
-    public ResponseEntity<EarnPointResponse> earn(@Valid @RequestBody EarnPointRequest request) {
+    @PostMapping("/grants")
+    public ResponseEntity<GrantPointResponse> grant(@Valid @RequestBody GrantPointRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(EarnPointResponse.from(
+                .body(GrantPointResponse.from(
                         pointGrantService.grant(request.userId(), request.pointKey(), request.amount(), request.expiryDays(), GrantType.AUTO)));
     }
 
-    @PostMapping("/earnings/{pointKey}/cancel")
+    @PostMapping("/grants/{pointKey}/cancel")
     public ResponseEntity<CancelGrantResponse> cancelGrant(@PathVariable String pointKey) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(CancelGrantResponse.from(pointGrantService.cancel(pointKey)));

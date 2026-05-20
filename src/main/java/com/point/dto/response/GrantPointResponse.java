@@ -5,7 +5,7 @@ import com.point.domain.entity.PointGrant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record EarnPointResponse(
+public record GrantPointResponse(
         String pointKey,
         String userId,
         Long originalAmount,
@@ -14,8 +14,8 @@ public record EarnPointResponse(
         LocalDate expiryDate,
         LocalDateTime createdAt
 ) {
-    public static EarnPointResponse from(PointGrant grant) {
-        return new EarnPointResponse(
+    public static GrantPointResponse from(PointGrant grant) {
+        return new GrantPointResponse(
                 grant.getPointKey(),
                 grant.getUserId(),
                 grant.getOriginalAmount(),
