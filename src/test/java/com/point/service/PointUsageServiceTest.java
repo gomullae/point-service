@@ -145,12 +145,12 @@ class PointUsageServiceTest {
         PointUsage usage = use("order-1", "use-1", 700L);
 
         // then
-        var details = pointUsageDetailRepository.findByPointUsageIdOrderByUseSequenceAsc(usage.getId());
+        var details = pointUsageDetailRepository.findByPointUsageIdOrderByUseSequenceDesc(usage.getId());
         assertThat(details).hasSize(2);
-        assertThat(details.get(0).getPointGrant().getPointKey()).isEqualTo("manual-1");
-        assertThat(details.get(0).getUsedAmount()).isEqualTo(500L);
-        assertThat(details.get(1).getPointGrant().getPointKey()).isEqualTo("auto-1");
-        assertThat(details.get(1).getUsedAmount()).isEqualTo(200L);
+        assertThat(details.get(0).getPointGrant().getPointKey()).isEqualTo("auto-1");
+        assertThat(details.get(0).getUsedAmount()).isEqualTo(200L);
+        assertThat(details.get(1).getPointGrant().getPointKey()).isEqualTo("manual-1");
+        assertThat(details.get(1).getUsedAmount()).isEqualTo(500L);
     }
 
     @Test
@@ -164,12 +164,12 @@ class PointUsageServiceTest {
         PointUsage usage = use("order-1", "use-1", 600L);
 
         // then
-        var details = pointUsageDetailRepository.findByPointUsageIdOrderByUseSequenceAsc(usage.getId());
+        var details = pointUsageDetailRepository.findByPointUsageIdOrderByUseSequenceDesc(usage.getId());
         assertThat(details).hasSize(2);
-        assertThat(details.get(0).getPointGrant().getPointKey()).isEqualTo("near-1");
-        assertThat(details.get(0).getUsedAmount()).isEqualTo(500L);
-        assertThat(details.get(1).getPointGrant().getPointKey()).isEqualTo("far-1");
-        assertThat(details.get(1).getUsedAmount()).isEqualTo(100L);
+        assertThat(details.get(0).getPointGrant().getPointKey()).isEqualTo("far-1");
+        assertThat(details.get(0).getUsedAmount()).isEqualTo(100L);
+        assertThat(details.get(1).getPointGrant().getPointKey()).isEqualTo("near-1");
+        assertThat(details.get(1).getUsedAmount()).isEqualTo(500L);
     }
 
     @Test
@@ -223,12 +223,14 @@ class PointUsageServiceTest {
         // then
         var cancelDetails = pointUsageCancelDetailRepository.findByPointUsageCancelId(cancel.getId());
         assertThat(cancelDetails).hasSize(2);
-        assertThat(cancelDetails.get(0).getCancelAmount()).isEqualTo(1_000L);
-        assertThat(cancelDetails.get(0).getRestoreType()).isEqualTo(RestoreType.CREATE_NEW_GRANT);
-        assertThat(cancelDetails.get(0).getRestoredPointGrant()).isNotNull();
-        assertThat(cancelDetails.get(1).getCancelAmount()).isEqualTo(100L);
-        assertThat(cancelDetails.get(1).getRestoreType()).isEqualTo(RestoreType.RESTORE_TO_ORIGINAL);
-        assertThat(cancelDetails.get(1).getRestoredPointGrant()).isNull();
+        // LIFO: sequence 2(B, 미만료) 먼저 복원
+        assertThat(cancelDetails.get(0).getCancelAmount()).isEqualTo(200L);
+        assertThat(cancelDetails.get(0).getRestoreType()).isEqualTo(RestoreType.RESTORE_TO_ORIGINAL);
+        assertThat(cancelDetails.get(0).getRestoredPointGrant()).isNull();
+        // sequence 1(A, 만료) 신규 적립
+        assertThat(cancelDetails.get(1).getCancelAmount()).isEqualTo(900L);
+        assertThat(cancelDetails.get(1).getRestoreType()).isEqualTo(RestoreType.CREATE_NEW_GRANT);
+        assertThat(cancelDetails.get(1).getRestoredPointGrant()).isNotNull();
         assertThat(pointGrantService.getUsableBalance(USER)).isEqualTo(1_400L);
         assertThat(usage.getRemainCancelableAmount()).isEqualTo(100L);
     }

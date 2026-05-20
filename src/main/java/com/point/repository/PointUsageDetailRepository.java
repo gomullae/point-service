@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface PointUsageDetailRepository extends JpaRepository<PointUsageDetail, Long> {
 
-    List<PointUsageDetail> findByPointUsageIdOrderByUseSequenceAsc(Long pointUsageId);
+    List<PointUsageDetail> findByPointUsageIdOrderByUseSequenceDesc(Long pointUsageId);
 }

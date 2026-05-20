@@ -135,7 +135,7 @@ public class PointUsageService {
         pointUsageCancelRepository.save(usageCancel);
 
         List<PointUsageDetail> details = pointUsageDetailRepository
-                .findByPointUsageIdOrderByUseSequenceAsc(usage.getId());
+                .findByPointUsageIdOrderByUseSequenceDesc(usage.getId());
         Map<Long, Long> cancelledAmountByDetailId = loadCancelledAmountByDetailId(details);
 
         LocalDate today = timeProvider.today();
