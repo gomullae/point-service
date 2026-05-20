@@ -94,13 +94,14 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 configKey로 설정 변경 시 400을 반환한다")
-    void updateConfig_invalidKey_returns400() throws Exception {
+    @DisplayName("존재하지 않는 configKey로 설정 변경 시 404를 반환한다")
+    void updateConfig_invalidKey_returns404() throws Exception {
         mockMvc.perform(put("/api/v1/admin/configs/UNKNOWN_KEY")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"newValue":"100","changedBy":"admin"}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CONFIG_NOT_FOUND"));
     }
 }

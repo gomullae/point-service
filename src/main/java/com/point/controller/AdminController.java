@@ -41,7 +41,7 @@ public class AdminController {
     public ResponseEntity<PointConfigResponse> updateConfig(
             @PathVariable String configKey,
             @Valid @RequestBody UpdateConfigRequest request) {
-        ConfigKey key = ConfigKey.valueOf(configKey);
+        ConfigKey key = ConfigKey.from(configKey);
         return ResponseEntity.ok(PointConfigResponse.from(
                 pointConfigService.updateConfig(key, request.newValue(), request.changedBy())));
     }

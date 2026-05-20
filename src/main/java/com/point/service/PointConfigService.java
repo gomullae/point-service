@@ -58,11 +58,6 @@ public class PointConfigService {
             throw new PointException(PointErrorCode.INVALID_CONFIG_VALUE);
         }
 
-        if (value <= 0) {
-            throw new PointException(PointErrorCode.INVALID_CONFIG_VALUE);
-        }
-        if (configKey == ConfigKey.DEFAULT_EXPIRY_DAYS && value >= 1825) {
-            throw new PointException(PointErrorCode.INVALID_CONFIG_VALUE);
-        }
+        configKey.validate(value);
     }
 }

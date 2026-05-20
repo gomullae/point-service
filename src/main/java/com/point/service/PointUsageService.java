@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,9 +40,7 @@ public class PointUsageService {
         var existingUsage = pointUsageRepository.findByPointKey(pointKey);
         if (existingUsage.isPresent()) {
             PointUsage existing = existingUsage.get();
-            if (existing.getUserId().equals(userId)
-                    && existing.getOrderId().equals(orderId)
-                    && existing.getUsedAmount() == amount) {
+            if (isSameUsageRequest(existing, userId, orderId, amount)) {
                 return existing;
             }
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
@@ -119,62 +118,115 @@ public class PointUsageService {
 
         List<PointUsageDetail> details = pointUsageDetailRepository
                 .findByPointUsageIdOrderByUseSequenceAsc(usage.getId());
-        Map<Long, Long> cancelledAmountByDetailId = pointUsageCancelDetailRepository
+        Map<Long, Long> cancelledAmountByDetailId = loadCancelledAmountByDetailId(details);
+
+        LocalDate today = timeProvider.today();
+        restoreUsedPoints(account, usage, usageCancel, details, cancelledAmountByDetailId, today, cancelAmount);
+
+        usage.cancel(cancelAmount);
+        account.increaseBalance(cancelAmount);
+
+        return usageCancel;
+    }
+
+    private void restoreUsedPoints(PointAccount account,
+                                   PointUsage usage,
+                                   PointUsageCancel usageCancel,
+                                   List<PointUsageDetail> details,
+                                   Map<Long, Long> cancelledAmountByDetailId,
+                                   LocalDate today,
+                                   long cancelAmount) {
+        long remaining = cancelAmount;
+        for (PointUsageDetail detail : details) {
+            if (remaining <= 0) break;
+
+            long cancelFromDetail = calculateCancelableAmount(detail, cancelledAmountByDetailId, remaining);
+            if (cancelFromDetail <= 0) continue;
+
+            RestoreResult restoreResult = restorePoint(account, usage, usageCancel, detail, today, cancelFromDetail);
+
+            pointUsageCancelDetailRepository.save(PointUsageCancelDetail.builder()
+                    .pointUsageCancel(usageCancel)
+                    .pointUsageDetail(detail)
+                    .cancelAmount(cancelFromDetail)
+                    .restoreType(restoreResult.restoreType())
+                    .restoredPointGrant(restoreResult.restoredGrant().orElse(null))
+                    .build());
+
+            remaining -= cancelFromDetail;
+        }
+    }
+
+    private Map<Long, Long> loadCancelledAmountByDetailId(List<PointUsageDetail> details) {
+        return pointUsageCancelDetailRepository
                 .sumCancelAmountByUsageDetailIds(details.stream().map(PointUsageDetail::getId).toList())
                 .stream()
                 .collect(Collectors.toMap(
                         PointUsageCancelDetailRepository.CancelledAmountView::getUsageDetailId,
                         PointUsageCancelDetailRepository.CancelledAmountView::getCancelledAmount
                 ));
+    }
 
-        LocalDate today = timeProvider.today();
-        long remaining = cancelAmount;
+    private long calculateCancelableAmount(PointUsageDetail detail,
+                                           Map<Long, Long> cancelledAmountByDetailId,
+                                           long remainingCancelAmount) {
+        long alreadyCancelled = cancelledAmountByDetailId.getOrDefault(detail.getId(), 0L);
+        long available = detail.getUsedAmount() - alreadyCancelled;
+        return Math.min(remainingCancelAmount, available);
+    }
 
-        for (PointUsageDetail detail : details) {
-            if (remaining <= 0) break;
-
-            long alreadyCancelled = cancelledAmountByDetailId.getOrDefault(detail.getId(), 0L);
-            long available = detail.getUsedAmount() - alreadyCancelled;
-            if (available <= 0) continue;
-
-            long cancelFromDetail = Math.min(remaining, available);
-            PointGrant grant = detail.getPointGrant();
-
-            RestoreType restoreType;
-            PointGrant restoredGrant = null;
-
-            if (grant.getStatus() == GrantStatus.ACTIVE && !grant.isExpired(today)) {
-                restoreType = RestoreType.RESTORE_TO_ORIGINAL;
-                grant.restoreAmount(cancelFromDetail);
-            } else {
-                restoreType = RestoreType.CREATE_NEW_GRANT;
-                long expiryDays = policyProvider.getLongValue(ConfigKey.DEFAULT_EXPIRY_DAYS);
-                restoredGrant = PointGrant.builder()
-                        .pointKey(pointKeyGenerator.generate("grant"))
-                        .pointAccount(account)
-                        .userId(usage.getUserId())
-                        .originalAmount(cancelFromDetail)
-                        .grantType(GrantType.CANCEL_RESTORE)
-                        .expiryDate(today.plusDays(expiryDays))
-                        .sourceUsageCancel(usageCancel)
-                        .build();
-                pointGrantRepository.save(restoredGrant);
-            }
-
-            pointUsageCancelDetailRepository.save(PointUsageCancelDetail.builder()
-                    .pointUsageCancel(usageCancel)
-                    .pointUsageDetail(detail)
-                    .cancelAmount(cancelFromDetail)
-                    .restoreType(restoreType)
-                    .restoredPointGrant(restoredGrant)
-                    .build());
-
-            remaining -= cancelFromDetail;
+    private RestoreResult restorePoint(PointAccount account,
+                                       PointUsage usage,
+                                       PointUsageCancel usageCancel,
+                                       PointUsageDetail detail,
+                                       LocalDate today,
+                                       long amount) {
+        PointGrant grant = detail.getPointGrant();
+        if (canRestoreToOriginalGrant(grant, today)) {
+            grant.restoreAmount(amount);
+            return RestoreResult.originalGrant();
         }
 
-        usage.cancel(cancelAmount);
-        account.increaseBalance(cancelAmount);
+        PointGrant restoredGrant = createRestoredGrant(account, usage, usageCancel, today, amount);
+        return RestoreResult.newGrant(restoredGrant);
+    }
 
-        return usageCancel;
+    private boolean canRestoreToOriginalGrant(PointGrant grant, LocalDate today) {
+        return grant.getStatus() == GrantStatus.ACTIVE && !grant.isExpired(today);
+    }
+
+    private PointGrant createRestoredGrant(PointAccount account,
+                                           PointUsage usage,
+                                           PointUsageCancel usageCancel,
+                                           LocalDate today,
+                                           long amount) {
+        long expiryDays = policyProvider.getLongValue(ConfigKey.DEFAULT_EXPIRY_DAYS);
+        PointGrant restoredGrant = PointGrant.builder()
+                .pointKey(pointKeyGenerator.generate("grant"))
+                .pointAccount(account)
+                .userId(usage.getUserId())
+                .originalAmount(amount)
+                .grantType(GrantType.CANCEL_RESTORE)
+                .expiryDate(today.plusDays(expiryDays))
+                .sourceUsageCancel(usageCancel)
+                .build();
+        return pointGrantRepository.save(restoredGrant);
+    }
+
+    private boolean isSameUsageRequest(PointUsage existing, String userId, String orderId, long amount) {
+        return existing.getUserId().equals(userId)
+                && existing.getOrderId().equals(orderId)
+                && existing.getUsedAmount() == amount;
+    }
+
+    private record RestoreResult(RestoreType restoreType, Optional<PointGrant> restoredGrant) {
+
+        static RestoreResult originalGrant() {
+            return new RestoreResult(RestoreType.RESTORE_TO_ORIGINAL, Optional.empty());
+        }
+
+        static RestoreResult newGrant(PointGrant restoredGrant) {
+            return new RestoreResult(RestoreType.CREATE_NEW_GRANT, Optional.of(restoredGrant));
+        }
     }
 }

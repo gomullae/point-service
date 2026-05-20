@@ -1,6 +1,5 @@
 package com.point.service;
 
-import com.point.common.PointKeyGenerator;
 import com.point.common.PointPolicyProvider;
 import com.point.common.TimeProvider;
 import com.point.domain.entity.*;
@@ -25,7 +24,6 @@ public class PointGrantService {
     private final PointAccountRepository pointAccountRepository;
     private final PointGrantRepository pointGrantRepository;
     private final PointPolicyProvider policyProvider;
-    private final PointKeyGenerator pointKeyGenerator;
     private final TimeProvider timeProvider;
 
     @Transactional(readOnly = true)
@@ -58,10 +56,7 @@ public class PointGrantService {
         var existingGrant = pointGrantRepository.findByPointKey(pointKey);
         if (existingGrant.isPresent()) {
             PointGrant existing = existingGrant.get();
-            if (existing.getUserId().equals(userId)
-                    && existing.getOriginalAmount() == amount
-                    && existing.getGrantType() == grantType
-                    && existing.getExpiryDate().equals(expiryDate)) {
+            if (isSameGrantRequest(existing, userId, amount, grantType, expiryDate)) {
                 return existing;
             }
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
@@ -126,5 +121,13 @@ public class PointGrantService {
         if (expiryDays < 1 || expiryDays >= 1825) {
             throw new PointException(PointErrorCode.INVALID_EXPIRY_DAYS);
         }
+    }
+
+    private boolean isSameGrantRequest(PointGrant existing, String userId, long amount,
+                                       GrantType grantType, LocalDate expiryDate) {
+        return existing.getUserId().equals(userId)
+                && existing.getOriginalAmount() == amount
+                && existing.getGrantType() == grantType
+                && existing.getExpiryDate().equals(expiryDate);
     }
 }
