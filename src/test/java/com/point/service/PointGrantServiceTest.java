@@ -79,16 +79,17 @@ class PointGrantServiceTest {
     }
 
     @Test
-    @DisplayName("같은 key라도 만료일이 다른 요청이면 예외를 던진다")
-    void grant_duplicateKeyDifferentExpiryDays() {
+    @DisplayName("같은 key에 만료일만 다른 재시도는 멱등 처리한다")
+    void grant_duplicateKeyDifferentExpiryDays_treatedAsIdempotent() {
         // given
-        pointGrantService.grant(USER, "key-1", 1_000L, 30L, GrantType.AUTO);
+        PointGrant first = pointGrantService.grant(USER, "key-1", 1_000L, 30L, GrantType.AUTO);
 
-        // when & then
-        assertThatThrownBy(() -> pointGrantService.grant(USER, "key-1", 1_000L, 60L, GrantType.AUTO))
-                .isInstanceOf(PointException.class)
-                .extracting(e -> ((PointException) e).getErrorCode())
-                .isEqualTo(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
+        // when — expiryDays만 다르게 재시도
+        PointGrant retried = pointGrantService.grant(USER, "key-1", 1_000L, 60L, GrantType.AUTO);
+
+        // then — 기존 결과 반환, 잔액 이중 적립 없음
+        assertThat(retried.getId()).isEqualTo(first.getId());
+        assertThat(pointGrantService.getUsableBalance(USER)).isEqualTo(1_000L);
     }
 
     @Test

@@ -55,10 +55,10 @@ public class PointGrantService {
     })
     @Transactional
     public PointGrant grant(String userId, String pointKey, long amount, Long requestedExpiryDays, GrantType grantType) {
-        LocalDate expiryDate = resolveExpiryDate(requestedExpiryDays);
-
-        Optional<PointGrant> idempotent = findExistingGrant(pointKey, userId, amount, grantType, expiryDate);
+        Optional<PointGrant> idempotent = findExistingGrant(pointKey, userId, amount, grantType);
         if (idempotent.isPresent()) return idempotent.get();
+
+        LocalDate expiryDate = resolveExpiryDate(requestedExpiryDays);
 
         validateGrantAmount(amount);
 
@@ -76,10 +76,9 @@ public class PointGrantService {
         return timeProvider.today().plusDays(expiryDays);
     }
 
-    private Optional<PointGrant> findExistingGrant(String pointKey, String userId, long amount,
-                                                    GrantType grantType, LocalDate expiryDate) {
+    private Optional<PointGrant> findExistingGrant(String pointKey, String userId, long amount, GrantType grantType) {
         return pointGrantRepository.findByPointKey(pointKey).map(existing -> {
-            if (isSameGrantRequest(existing, userId, amount, grantType, expiryDate)) {
+            if (isSameGrantRequest(existing, userId, amount, grantType)) {
                 return existing;
             }
             throw new PointException(PointErrorCode.DUPLICATE_POINT_KEY_WITH_DIFFERENT_REQUEST);
@@ -128,19 +127,19 @@ public class PointGrantService {
         PointGrant grant = pointGrantRepository.findByPointKey(pointKey)
                 .orElseThrow(() -> new PointException(PointErrorCode.GRANT_NOT_FOUND));
 
-        PointAccount account = pointAccountRepository.findByUserId(grant.getUserId())
-                .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
-        pointExpirationService.expire(account, timeProvider.today());
-
         if (grant.getStatus() == GrantStatus.CANCELLED) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_CANCELLED);
         }
-        if (grant.getStatus() == GrantStatus.EXPIRED) {
+        if (grant.isExpired(timeProvider.today())) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_EXPIRED);
         }
         if (grant.hasBeenUsed()) {
             throw new PointException(PointErrorCode.GRANT_ALREADY_USED);
         }
+
+        PointAccount account = pointAccountRepository.findByUserId(grant.getUserId())
+                .orElseThrow(() -> new PointException(PointErrorCode.ACCOUNT_NOT_FOUND));
+        pointExpirationService.expire(account, timeProvider.today());
 
         account.decreaseBalance(grant.getRemainingAmount());
         grant.cancel();
@@ -159,11 +158,9 @@ public class PointGrantService {
         }
     }
 
-    private boolean isSameGrantRequest(PointGrant existing, String userId, long amount,
-                                       GrantType grantType, LocalDate expiryDate) {
+    private boolean isSameGrantRequest(PointGrant existing, String userId, long amount, GrantType grantType) {
         return existing.getUserId().equals(userId)
                 && existing.getOriginalAmount() == amount
-                && existing.getGrantType() == grantType
-                && existing.getExpiryDate().equals(expiryDate);
+                && existing.getGrantType() == grantType;
     }
 }
